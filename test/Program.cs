@@ -8,47 +8,84 @@ namespace test
         static void Main(string[] args)
         {
             // Direct mapped with have an 8 byte block with 8 rows
-            SimulateCache(8, 1, 12);
+            // SimulateCache(64, 1, 12, true);
 
-            // Full associative will have a 16 byte block with 5 ways
-            SimulateCache(16, 5, 12);
+            // Full associative will have a 16 byte block with 6 ways
+            // SimulateCache(64, 1, 12, false);
 
-            //Set Associate with have a 32 byte block with 2 ways and 1 row. 
-            SimulateCache(32, 2, 12);
+            //Set Associate with have a 16 byte block with 2 ways and 2 rows. 
+            SimulateCache(64, 1, 12, true);
         }
-        static void SimulateCache(int dataBlockSize, int waySize, double _cyclesOnMiss)
+        static void SimulateCache(int dataBlockSize, int waySize, double _cyclesOnMiss, bool hasRows)
         {
 
             int DATA_BLOCK_SIZE = dataBlockSize;
+            System.Console.WriteLine("The Block Size is: " + DATA_BLOCK_SIZE.ToString());
             int WAY_SIZE = waySize;
+            System.Console.WriteLine("The way size is: " + WAY_SIZE.ToString());
             double cyclesOnMiss = _cyclesOnMiss;
+            System.Console.WriteLine("The number of cycles on miss is: " + cyclesOnMiss.ToString());
 
             // total number of bits 860
             int totalBits = 860;
+            System.Console.WriteLine("Total number of bits is:" + totalBits.ToString());
 
             // number of block bits is block size * 8
             int blockBits = DATA_BLOCK_SIZE * 8;
+            System.Console.WriteLine("Number of block bits: " + blockBits.ToString());
 
             // number of lru bits is log base 2 of number of ways
             int LRU_BITS = (int)Math.Log(WAY_SIZE, 2);
+            System.Console.WriteLine("Number of Lru Bits is:" + LRU_BITS.ToString());
+
+            // the size of the lru is 2^number of lru bits
+            int LRU_SIZE = (int)Math.Pow(2, LRU_BITS);
+            System.Console.WriteLine("The LRU size is: " + LRU_SIZE.ToString());
+
 
             // number of row bits is number of (block bits + number of lru bits) * number of ways
-            int totalRowBits = (blockBits + LRU_BITS) * WAY_SIZE;
+            int estimatedRowBits = (blockBits + LRU_BITS + 1) * WAY_SIZE;
+            System.Console.WriteLine("Number of estimated row bits is: " + estimatedRowBits.ToString());
 
             // number of rows is 860//number of row bits
-            int ROW_NUMBERS = (int)Math.Pow(2,(int)Math.Log((totalBits / totalRowBits), 2));
+            int ROW_NUMBERS;
+            int addressBits;
+            if (hasRows)
+            {
+                ROW_NUMBERS = (int)Math.Pow(2, (int)Math.Log((totalBits / estimatedRowBits), 2));
+                addressBits = (int)Math.Log(ROW_NUMBERS, 2);
+                System.Console.WriteLine("Number of rows is: " + ROW_NUMBERS.ToString());
+                System.Console.WriteLine("Number of address row bits is " + addressBits.ToString());
+            }
+            else
+            {
+                ROW_NUMBERS = 1;
+                addressBits = 0;
+                System.Console.WriteLine("Number of rows is: " + ROW_NUMBERS.ToString());
+                System.Console.WriteLine("Number of address row bits is " + addressBits.ToString());
+
+            }
 
             // number of bits in an Entry is number of block bits + valid bit + number of tag bits + number of lru bits
             int OFFSET_BITS = (int)Math.Log(DATA_BLOCK_SIZE, 2);
+            System.Console.WriteLine("Number of offset bits is: " + OFFSET_BITS.ToString());
 
-            int LRU_SIZE = (int)Math.Pow(2, LRU_BITS);
+            // the number of tag bits is given by total number of bits - number of row bits - number of offset bits
+            int tagBits =  16 - addressBits - OFFSET_BITS;
+            System.Console.WriteLine("The number of tag bits is " + tagBits.ToString());
+
+            // the total number of row bits is the tag bits + data block bits + valid bit + lru bits * way size
+            int totalRowBits = (tagBits + blockBits + 1 + LRU_BITS) * WAY_SIZE * ROW_NUMBERS;
+            System.Console.WriteLine("The total number of row bits is " + totalRowBits.ToString());
 
 
             Entry[,] cache = InitializeCache(ROW_NUMBERS, WAY_SIZE);
 
-            // int[] addr = new int[] { 4, 8, 20, 24, 28, 36, 44, 20, 28, 36, 40, 44, 68, 72, 92, 96, 100, 104, 108, 112, 100, 112, 116, 120, 128, 140 };
-            int[] addr = new int[] { 16, 20, 24, 28, 32, 36, 60, 64, 56, 60, 64, 68, 56, 60, 64, 72, 76, 92, 96, 100, 104, 108, 112, 120, 124, 128, 144, 148 };
 
+            int[] addr = new int[] { 4, 8, 20, 24, 28, 36, 44, 20, 28, 36, 40, 44, 68, 72, 92, 96, 100, 104, 108, 112, 100, 112, 116, 120, 128, 140 };
+            // int[] addr = new int[] { 16, 20, 24, 28, 32, 36, 60, 64, 56, 60, 64, 68, 56, 60, 64, 72, 76, 92, 96, 100, 104, 108, 112, 120, 124, 128, 144, 148 };
+
+            
             // run the cache twice for actual simulation
             for (int x = 0; x < 2; x++)
             {
@@ -68,7 +105,12 @@ namespace test
                     // int offset = addr[i] % 8;
 
                     if (x == 1)
+                    {
+                        // direct mapped
                         System.Console.Write("Accessing address: " + addr[i].ToString() + "(tag " + tag.ToString() + ", row " + row.ToString() + ", offset " + offset.ToString() + "):");
+                    }
+
+
 
                     bool hit = false;
                     // Loop through each way in the cache
@@ -79,12 +121,21 @@ namespace test
                         {
                             hit = true;
                             hits++;
-                            ReorderWays(cache, row, j, LRU_SIZE);
                             if (x == 1)
                             {
-                                System.Console.Write("Hit from row " + row.ToString() + " Way " + j.ToString());
+                                // fully  associative
+                                // System.Console.Write("Accessing address: " + addr[i].ToString() + "(tag " + tag.ToString() + ", row " + j.ToString() + ", offset " + offset.ToString() + "):");
+                                // System.Console.Write("Hit from row " + j.ToString());
+
+                                // direct mapped
+                                System.Console.Write("Hit from row " + row.ToString());
+
+                                // set associative
+                                Console.Write(" Way " + j.ToString());
+
                                 System.Console.WriteLine();
                             }
+                            ReorderWays(cache, row, j, LRU_SIZE);
                             break;
                         }
                     }
@@ -121,14 +172,28 @@ namespace test
                         }
                         if (x == 1)
                         {
-                            System.Console.Write("Miss - Cached to row " + row.ToString() + ": Way " + wayNumber.ToString());
+                            // fully associative
+                            // System.Console.Write("Accessing address: " + addr[i].ToString() + "(tag " + tag.ToString() + ", row " + wayNumber.ToString() + ", offset " + offset.ToString() + "):");
+                            // System.Console.Write("Miss - Cached to row " + wayNumber.ToString());
+
+                            // direct mapped and set associative
+                            System.Console.Write("Miss - Cached to row " + row.ToString());
+
+                            // set associative
+                            Console.Write(": Way " + wayNumber.ToString());
                             System.Console.WriteLine();
                         }
                     }
-                    // PrintContentsOfCache(ROW_NUMBERS, WAY_SIZE, cache);
+                    if (x == 1)
+                    {
+                        // PrintContentsOfCache(ROW_NUMBERS, WAY_SIZE, cache);
+                    }
                 }
                 if (x == 1)
+                {
                     CalculateCpi(cyclesOnMiss, DATA_BLOCK_SIZE, hits, misses, addr);
+                    PrintContentsOfCache(ROW_NUMBERS, WAY_SIZE, cache);
+                }
             }
 
         }
@@ -164,24 +229,55 @@ namespace test
         }
         static void PrintContentsOfCache(int rowNumbers, int waySize, Entry[,] cache)
         {
+
             System.Console.WriteLine("Here are the contents of the cache");
+            // set associative
+            Console.Write("Row \t Way \t Tag \t Data \t Valid \t LRU \n");
+
+            // fully associative
+            // Console.Write("Row \t Tag \t Data \t Valid \t LRU \n");
+
+            // direct mapped
+            // Console.Write("Row \t Tag \t Data \t Valid \n");
+
+
+
             for (int m = 0; m < rowNumbers; m++)
             {
                 for (int n = 0; n < waySize; n++)
                 {
-                    Console.Write("Row Number: " + m.ToString());
-                    Console.Write("\tWay Number: " + n.ToString());
-                    Console.Write("\tTag: " + cache[m, n].tag.ToString());
-                    Console.Write("\tValid: " + cache[m, n].valid.ToString());
-                    Console.Write("\tLRU: " + cache[m, n].LRU.ToString());
-                    Console.Write("\tData: ");
-                    foreach (int block in cache[m, n].data)
-                    {
-                        Console.Write(block.ToString() + ", ");
-                    }
-                    System.Console.WriteLine();
+                    // direct mapped
+                    // Console.Write(m.ToString() + " \t" + cache[m, n].tag.ToString() + " \t"); 
+
+                    // fully associative
+                    // Console.Write(n.ToString() + " \t" + cache[m, n].tag.ToString() + " \t"); 
+
+                    // set associative
+                    Console.Write(m.ToString() + "\t" + n.ToString()  + " \t" + cache[m, n].tag.ToString() + " \t"); 
+
+
+                    // fully associative and direct mapped
+                    // foreach (int block in cache[m, n].data)
+                    // {
+                    //     Console.Write("-\t ");
+                    // }
+
+                    // set associative
+                    Console.Write(cache[m,n].data.Count.ToString() + "\t");
+
+                    if (cache[m, n].tag != -1)
+                        cache[m, n].valid = 1;
+
+                    // direct mapped
+                    Console.Write(cache[m, n].valid.ToString() + "\t");
+
+                    // fully associative and set associative
+                    Console.Write(cache[m,n].LRU.ToString() + "\n"); 
+
                 }
             }
+
+            
         }
 
 
@@ -190,6 +286,8 @@ namespace test
             double cpiOnHit = 1;
             double cpiOnMiss = cyclesOnMiss + dataBlockSize;
             double cpi = (hits * cpiOnHit + misses * cpiOnMiss) / addr.Length;
+            System.Console.WriteLine("Number of hits: " + hits.ToString());
+            System.Console.WriteLine("Number of misses: " + misses.ToString());
             System.Console.WriteLine("The cpi is " + cpi.ToString());
             System.Console.WriteLine();
             System.Console.WriteLine();
