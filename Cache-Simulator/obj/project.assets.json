@@ -694,11 +694,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/richardtimpson/Documents/CS-3810-Repo/test/test.csproj",
+      "projectUniqueName": "/Users/richardtimpson/OneDrive - University of Utah/Fall 2018/CS 3810/CS-3810-Repo/test/test.csproj",
       "projectName": "test",
-      "projectPath": "/Users/richardtimpson/Documents/CS-3810-Repo/test/test.csproj",
+      "projectPath": "/Users/richardtimpson/OneDrive - University of Utah/Fall 2018/CS 3810/CS-3810-Repo/test/test.csproj",
       "packagesPath": "/Users/richardtimpson/.nuget/packages/",
-      "outputPath": "/Users/richardtimpson/Documents/CS-3810-Repo/test/obj/",
+      "outputPath": "/Users/richardtimpson/OneDrive - University of Utah/Fall 2018/CS 3810/CS-3810-Repo/test/obj/",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "/usr/local/share/dotnet/sdk/NuGetFallbackFolder"
